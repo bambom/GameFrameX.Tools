@@ -12,7 +12,7 @@ public static partial class MessageHelper
     private const string CommentPattern = @"//([^\n]*)\n\s*(enum|message)\s+(\w+)\s*{";
     private const string StartPattern = @"option start = (\d+);";
     private const string ModulePattern = @"option module = (-?\d+);";
-    private const string PackagePattern = @"package (\w+);";
+    private const string PackagePattern = @"package ([\w\.]+);";
 
 
     public static MessageInfoList Parse(string proto, string fileName, string filePath, bool isGenerateErrorCode)
