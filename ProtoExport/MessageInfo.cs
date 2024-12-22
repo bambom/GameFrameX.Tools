@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace GameFrameX.ProtoExport
 {
     public class MessageInfoList
@@ -26,26 +28,113 @@ namespace GameFrameX.ProtoExport
         /// 输出路径
         /// </summary>
         public string OutputPath { get; set; }
+
+        /// <summary>
+        /// 当前模块引用的其他模块名称集合
+        /// </summary>
+        private readonly HashSet<string> ReferencedModules = new();
+
+        /// <summary>
+        /// 初始化时自动添加基础引用
+        /// </summary>
+        public MessageInfoList()
+        {
+            // 添加基础引用
+            AddReferencedModule("GameFrameX.Network.Runtime");
+            AddReferencedModule("System");
+        }
+
+        /// <summary>
+        /// 添加引用模块，避免重复添加和自引用
+        /// </summary>
+        public void AddReferencedModule(string moduleName)
+        {
+            if (string.IsNullOrEmpty(moduleName) || moduleName == ModuleName)
+            {
+                return;
+            }
+
+            ReferencedModules.Add(moduleName);
+        }
+
+        /// <summary>
+        /// 自动分析并添加所有消息中引用的模块
+        /// </summary>
+        public void AnalyzeAndAddReferences()
+        {
+            foreach (var info in Infos)
+            {
+                // 分析消息字段中的类型引用
+                foreach (var field in info.Fields)
+                {
+                    if (!field.IsValid) continue;
+
+                    if (MessageHelper.type2Module.TryGetValue(field.Type, out var module))
+                    {
+                        AddReferencedModule(module);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 获取所有引用的模块名称
+        /// </summary>
+        public IReadOnlyCollection<string> GetReferencedModules() => ReferencedModules;
+
+        /// <summary>
+        /// 添加所需的using语句
+        /// </summary>
+        public void AppendUsings(StringBuilder sb)
+        {
+            // 确保在添加using之前已经分析了所有引用
+            AnalyzeAndAddReferences();
+
+            // 添加其他模块的using，排除System因为已经单独处理
+            foreach (var referencedModule in ReferencedModules.OrderBy(x => x))
+            {
+                if (referencedModule != "System")
+                {
+                    sb.AppendLine($"using {referencedModule};");
+                }
+            }
+
+            // 添加空行分隔
+            sb.AppendLine();
+        }
     }
 
     /// <summary>
     /// 消息码信息
     /// </summary>
+    /// <summary>
+    /// 消息码信息
+    /// </summary>
     public class MessageInfo
     {
+        
         private string _name;
+        private readonly MessageInfoList _root;
 
-        public MessageInfo(bool isEnum = false) : this()
+        /// <summary>
+        /// 所属的Proto文件路径
+        /// </summary>
+        public string ProtoFilePath { get; set; }
+
+        /// <summary>
+        /// 引用的消息类型列表
+        /// </summary>
+        private readonly HashSet<string> _referencedTypes = new HashSet<string>();
+
+        public MessageInfo(MessageInfoList root, bool isEnum = false)
         {
+            _root = root;
             IsEnum = isEnum;
-        }
-
-        private MessageInfo()
-        {
             Fields = new List<MessageMember>();
             Description = string.Empty;
+            
+           
         }
-
 
         /// <summary>
         /// 是否是请求
@@ -71,6 +160,11 @@ namespace GameFrameX.ProtoExport
         /// 是否是消息
         /// </summary>
         public bool IsMessage => IsRequest || IsResponse || IsNotify;
+
+        /// <summary>
+        /// 消息名称，用于请求和响应配对
+        /// </summary>
+        public string MessageName { get; private set; }
 
         /// <summary>
         /// 父类
@@ -107,12 +201,6 @@ namespace GameFrameX.ProtoExport
             }
         }
 
-
-        /// <summary>
-        /// 消息名称，用于请求和相应配对
-        /// </summary>
-        public string MessageName { get; private set; }
-
         /// <summary>
         /// 名称
         /// </summary>
@@ -122,30 +210,88 @@ namespace GameFrameX.ProtoExport
             set
             {
                 _name = value;
-                IsRequest = Name.StartsWith("Req") || Name.StartsWith("C2S_") || Name.EndsWith("Request");
-                IsNotify = Name.StartsWith("Notify");
-                IsHeartbeat = Name.Contains("Heartbeat", StringComparison.OrdinalIgnoreCase);
-                IsResponse = Name.StartsWith("Resp") || Name.StartsWith("S2C_") || Name.EndsWith("Response") || IsNotify || (IsHeartbeat && !IsRequest);
+
+                // 解析消息类型
+                IsRequest = _name.StartsWith("Req") || _name.StartsWith("C2S_") || _name.EndsWith("Request");
+                IsNotify = _name.StartsWith("Notify");
+                IsHeartbeat = _name.Contains("Heartbeat", StringComparison.OrdinalIgnoreCase);
+                IsResponse = _name.StartsWith("Resp") || _name.StartsWith("S2C_") || _name.EndsWith("Response") ||
+                             IsNotify || (IsHeartbeat && !IsRequest);
+
+                // 设置消息名称
                 if (IsRequest)
                 {
-                    if (Name.StartsWith("Req"))
+                    if (_name.StartsWith("Req"))
                     {
-                        MessageName = Name[3..];
+                        MessageName = _name[3..];
                     }
-                    else if (Name.StartsWith("C2S_"))
+                    else if (_name.StartsWith("C2S_"))
                     {
-                        MessageName = Name[4..];
+                        MessageName = _name[4..];
                     }
                 }
                 else
                 {
-                    if (Name.StartsWith("Resp") || Name.StartsWith("S2C_"))
+                    if (_name.StartsWith("Resp") || _name.StartsWith("S2C_"))
                     {
-                        MessageName = Name[4..];
+                        MessageName = _name[4..];
                     }
+                }
+
+                // 解析类型引用
+                ParseTypeReferences();
+            }
+        }
+
+        /// <summary>
+        /// 解析类型引用
+        /// </summary>
+        private void ParseTypeReferences()
+        {
+            if (Fields == null) return;
+
+            foreach (var field in Fields)
+            {
+                if (string.IsNullOrEmpty(field.Type)) continue;
+
+                // 解析字段类型是否引用了其他模块
+                var typeInfo = ParseTypeInfo(field.Type);
+                if (!string.IsNullOrEmpty(typeInfo.ModuleName))
+                {
+                    _root.AddReferencedModule(typeInfo.ModuleName);
+                    _referencedTypes.Add(field.Type);
+                }
+            }
+
+            // 解析父类引用
+            var parentClassValue = ParentClass;
+            if (!string.IsNullOrEmpty(parentClassValue))
+            {
+                var parentTypeInfo = ParseTypeInfo(parentClassValue);
+                if (!string.IsNullOrEmpty(parentTypeInfo.ModuleName))
+                {
+                    _root.AddReferencedModule(parentTypeInfo.ModuleName);
+                    _referencedTypes.Add(parentClassValue);
                 }
             }
         }
+
+        private (string ModuleName, string TypeName) ParseTypeInfo(string fullTypeName)
+        {
+            // 假设类型格式为: ModuleName.TypeName 或 TypeName
+            var parts = fullTypeName.Split('.');
+            if (parts.Length > 1)
+            {
+                return (parts[0], parts[1]);
+            }
+
+            return (string.Empty, parts[0]);
+        }
+
+        /// <summary>
+        /// 获取引用的类型列表
+        /// </summary>
+        public IReadOnlyCollection<string> GetReferencedTypes() => _referencedTypes;
 
         /// <summary>
         /// 操作码
@@ -170,6 +316,9 @@ namespace GameFrameX.ProtoExport
 
     public class MessageMember
     {
+        private static Dictionary<string, string> type2Module = new Dictionary<string, string>();
+        
+        
         private int _members;
 
         /// <summary>

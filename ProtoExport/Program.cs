@@ -41,7 +41,32 @@ namespace GameFrameX.ProtoExport
             var files = Directory.GetFiles(launcherOptions.InputPath, "*.proto", SearchOption.AllDirectories);
 
             var messageInfoLists = new List<MessageInfoList>(files.Length);
+            //收集类型
             foreach (var file in files)
+            {
+                var operationCodeInfo = MessageHelper.Parse(File.ReadAllText(file), Path.GetFileNameWithoutExtension(file), launcherOptions.OutputPath, launcherOptions.IsGenerateErrorCode);
+                messageInfoLists.Add(operationCodeInfo);
+            }
+            
+            //生成脚本
+            foreach (var operationCodeInfo in messageInfoLists)
+            {
+                switch (modeType)
+                {
+                    case ModeType.Server:
+                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, launcherOptions.NamespaceName);
+                        break;
+                    case ModeType.Unity:
+                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, operationCodeInfo.ModuleName);
+                        break;
+                    case ModeType.TypeScript:
+                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, operationCodeInfo.FileName);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            /*foreach (var file in files)
             {
                 var operationCodeInfo = MessageHelper.Parse(File.ReadAllText(file), Path.GetFileNameWithoutExtension(file), launcherOptions.OutputPath, launcherOptions.IsGenerateErrorCode);
                 messageInfoLists.Add(operationCodeInfo);
@@ -49,7 +74,7 @@ namespace GameFrameX.ProtoExport
                 {
                     case ModeType.Server:
                     case ModeType.Unity:
-                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, launcherOptions.NamespaceName);
+                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, operationCodeInfo.ModuleName);
                         break;
                     case ModeType.TypeScript:
                         ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, Path.GetFileNameWithoutExtension(file));
@@ -58,6 +83,7 @@ namespace GameFrameX.ProtoExport
                         throw new ArgumentOutOfRangeException();
                 }
             }
+            */
 
             ProtoGenerateHelper?.Post(messageInfoLists, launcherOptions.OutputPath);
 

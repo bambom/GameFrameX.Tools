@@ -17,6 +17,8 @@ namespace GameFrameX.ProtoExport
             sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using GameFrameX.Network.Runtime;");
 
+            messageInfoList.AppendUsings(sb);
+            
             sb.AppendLine();
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");

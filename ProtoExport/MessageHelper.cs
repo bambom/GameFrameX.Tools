@@ -54,10 +54,10 @@ public static partial class MessageHelper
 
         Console.WriteLine($"Package: {packageMatch.Groups[1].Value} => Module: {moduleMatch.Groups[1].Value}");
         // 使用正则表达式提取枚举类型
-        ParseEnum(proto, messageInfo.Infos);
+        ParseEnum(proto, messageInfo);
 
         // 使用正则表达式提取消息类型
-        ParseMessage(proto, messageInfo.Infos, isGenerateErrorCode);
+        ParseMessage(proto, messageInfo, isGenerateErrorCode);
 
         ParseComment(proto, messageInfo.Infos);
 
@@ -113,13 +113,13 @@ public static partial class MessageHelper
         }
     }
 
-    private static void ParseEnum(string proto, List<MessageInfo> codes)
+    private static void ParseEnum(string proto, MessageInfoList root)
     {
         MatchCollection enumMatches = Regex.Matches(proto, EnumPattern, RegexOptions.Singleline);
         foreach (Match match in enumMatches)
         {
-            MessageInfo info = new MessageInfo(true);
-            codes.Add(info);
+            MessageInfo info = new MessageInfo(root,true);
+            root.Infos.Add(info);
             string blockName = match.Groups[1].Value;
             info.Name = blockName;
             // Console.WriteLine("Enum Name: " + match.Groups[1].Value);
@@ -150,8 +150,9 @@ public static partial class MessageHelper
             }
         }
     }
+    public static Dictionary<string, string> type2Module = new Dictionary<string, string>();
 
-    private static void ParseMessage(string proto, List<MessageInfo> codes, bool isGenerateErrorCode = false)
+    private static void ParseMessage(string proto,  MessageInfoList root, bool isGenerateErrorCode = false)
     {
         MatchCollection messageMatches = Regex.Matches(proto, MessagePattern, RegexOptions.Singleline);
         foreach (Match match in messageMatches)
@@ -160,9 +161,11 @@ public static partial class MessageHelper
             // Console.WriteLine("Message Name: " + match.Groups[1].Value);
             // Console.WriteLine("Contents: " + match.Groups[2].Value);
             var blockContent = match.Groups[2].Value.Trim();
-            MessageInfo info = new MessageInfo();
-            codes.Add(info);
+            MessageInfo info = new MessageInfo(root);
+            root.Infos.Add(info);
             info.Name = messageName;
+            type2Module[messageName] = root.ModuleName;
+            
             foreach (var line in blockContent.Split(new string[] { "\r", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
             {
                 MessageMember field = new MessageMember();
