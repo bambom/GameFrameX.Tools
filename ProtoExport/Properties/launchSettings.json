@@ -6,7 +6,7 @@
     },
     "ProtoUnityToolsApp": {
       "commandName": "Project",
-      "commandLineArgs": "--mode unity --inputPath ./../../../../../Protobuf --outputPath ./../../../../../Unity/Assets/Hotfix/Proto --namespaceName Hotfix.Proto --isGenerateErrorCode true"
+      "commandLineArgs": "--mode unity --inputPath ./../../../../../Protobuf --outputPath ./../../../../../ForTestAll/Unity/Assets/Hotfix/Proto1 --namespaceName Hotfix.Proto --isGenerateErrorCode true"
     },
     "ProtoTypeScriptToolsApp": {
        "commandName": "Project",

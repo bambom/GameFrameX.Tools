@@ -5,7 +5,7 @@ namespace GameFrameX.ProtoExport
     /// <summary>
     /// 生成ProtoBuf 协议文件
     /// </summary>
-    [Mode(ModeType.Unity)]
+    //[Mode(ModeType.Unity)]
     internal class ProtoBuffUnityHelper : IProtoGenerateHelper
     {
         public void Run(MessageInfoList messageInfoList, string outputPath, string namespaceName = "Hotfix")
