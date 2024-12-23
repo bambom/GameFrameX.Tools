@@ -51,6 +51,11 @@ namespace GameFrameX.ProtoExport
             //生成脚本
             foreach (var operationCodeInfo in messageInfoLists)
             {
+                if (!operationCodeInfo.ModuleName.Contains("Proto."))
+                {
+                    continue;
+                }
+                
                 switch (modeType)
                 {
                     case ModeType.Server:
@@ -65,25 +70,10 @@ namespace GameFrameX.ProtoExport
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+                
+                break;
             }
-            /*foreach (var file in files)
-            {
-                var operationCodeInfo = MessageHelper.Parse(File.ReadAllText(file), Path.GetFileNameWithoutExtension(file), launcherOptions.OutputPath, launcherOptions.IsGenerateErrorCode);
-                messageInfoLists.Add(operationCodeInfo);
-                switch (modeType)
-                {
-                    case ModeType.Server:
-                    case ModeType.Unity:
-                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, operationCodeInfo.ModuleName);
-                        break;
-                    case ModeType.TypeScript:
-                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, Path.GetFileNameWithoutExtension(file));
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-            }
-            */
+
 
             ProtoGenerateHelper?.Post(messageInfoLists, launcherOptions.OutputPath);
 

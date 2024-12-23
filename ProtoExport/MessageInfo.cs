@@ -116,6 +116,8 @@ namespace GameFrameX.ProtoExport
         private string _name;
         private readonly MessageInfoList _root;
 
+        public MessageInfoList Root => _root;
+
         /// <summary>
         /// 所属的Proto文件路径
         /// </summary>
@@ -316,9 +318,6 @@ namespace GameFrameX.ProtoExport
 
     public class MessageMember
     {
-        private static Dictionary<string, string> type2Module = new Dictionary<string, string>();
-        
-        
         private int _members;
 
         /// <summary>
@@ -338,6 +337,16 @@ namespace GameFrameX.ProtoExport
         /// 字段类型
         /// </summary>
         public string Type { get; set; }
+
+        public string GetNamespaceTypeString()
+        {
+           MessageHelper. type2Module.TryGetValue(Type, out var space);
+           if (!string.IsNullOrEmpty(space))
+           {
+               return space + "." + Type;
+           }
+           return Type;
+        }
 
         /// <summary>
         /// 注释

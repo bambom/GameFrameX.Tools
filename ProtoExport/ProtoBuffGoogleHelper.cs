@@ -10,7 +10,7 @@ namespace GameFrameX.ProtoExport
     {
         public void Run(MessageInfoList messageInfoList, string outputPath, string namespaceName = "Hotfix")
         {
-            StringBuilder sb = new StringBuilder();
+            /*StringBuilder sb = new StringBuilder();
 
             sb.AppendLine("using System;");
             sb.AppendLine("using Google.Protobuf;");
@@ -38,7 +38,46 @@ namespace GameFrameX.ProtoExport
             sb.Append("}");
             sb.AppendLine();
 
-            File.WriteAllText(messageInfoList.OutputPath + ".cs", sb.ToString(), Encoding.UTF8);
+            File.WriteAllText(messageInfoList.OutputPath + ".cs", sb.ToString(), Encoding.UTF8);*/
+            
+           
+            foreach (MessageInfo operationCodeInfo in messageInfoList.Infos)
+            {
+                StringBuilder sb = new StringBuilder();
+
+                sb.AppendLine("using System;");
+                sb.AppendLine("using Google.Protobuf;");
+                sb.AppendLine("using GameFrameX.Network.Runtime;");
+                sb.AppendLine("using System.Diagnostics;");
+                sb.AppendLine("using Google.Protobuf.Collections;");
+                
+                messageInfoList.AppendUsings(sb);
+            
+                sb.AppendLine();
+                sb.AppendLine($"namespace {namespaceName}");
+                sb.AppendLine("{");
+                
+                if (operationCodeInfo.IsEnum)
+                {
+                    GenerateEnum(sb, operationCodeInfo);
+                }
+                else
+                {
+                    GenerateMessage(sb, operationCodeInfo, messageInfoList.Module);
+                }
+                
+                sb.Append("}");
+                sb.AppendLine();
+
+                if (!Directory.Exists(operationCodeInfo.Root.OutputPath))
+                {
+                    Directory.CreateDirectory(operationCodeInfo.Root.OutputPath);
+                }
+
+                var path = Path.Combine(operationCodeInfo.Root.OutputPath, operationCodeInfo.Name + ".cs");
+                File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+                
+            }
         }
 
         private void GenerateEnum(StringBuilder sb, MessageInfo enumInfo)
@@ -92,14 +131,32 @@ namespace GameFrameX.ProtoExport
             {
                 if (!field.IsValid) continue;
 
-                // Field number constant
+                // 字段序列号
                 sb.AppendLine($"\t\tpublic const int {field.Name}FieldNumber = {fieldNumber};");
+
+                if (field.IsRepeated)
+                {
+                    // 属性字段
+                    string fieldType = GetFieldType(field);
+                    string staticDefault = GetRepatedStaticDefaultValue(field);
+                    sb.AppendLine($"\t\tprivate static readonly {fieldType} _repeated_{field.Name.ToCamelCase()}_codec {staticDefault}");
+                    sb.AppendLine();
+                    
+                    // 属性字段
+                    string defaultValue = GetDefaultValue(field);
+                    sb.AppendLine($"\t\tprivate readonly {fieldType} {field.Name.ToCamelCase()}_ {defaultValue};");
+                    sb.AppendLine();
+                }
+                else
+                {
+                    // 属性字段
+                    string fieldType = GetFieldType(field);
+                    string defaultValue = GetDefaultValue(field);
+                    sb.AppendLine($"\t\tprivate  {fieldType} {field.Name.ToCamelCase()}_ {defaultValue};");
+                    sb.AppendLine();
+                }
+               
                 
-                // Private backing field
-                string fieldType = GetFieldType(field);
-                string defaultValue = GetDefaultValue(field);
-                sb.AppendLine($"\t\tprivate {fieldType} {field.Name.ToCamelCase()}_ {defaultValue};");
-                sb.AppendLine();
 
                 // Property
                 GenerateProperty(sb, field);
@@ -119,18 +176,25 @@ namespace GameFrameX.ProtoExport
         private string GetFieldType(MessageMember field)
         {
             if (field.IsRepeated)
-                return $"List<{field.Type}>";
-            return field.Type;
+                return $"RepeatedField<{field.GetNamespaceTypeString()}>";
+            return field.GetNamespaceTypeString();
         }
 
+        private string GetRepatedStaticDefaultValue(MessageMember field)
+        {
+            uint wireType = GetWireType(field.Type);
+            uint tag = (uint)(field.Members << 3) | wireType;
+            return $"= FieldCodec.ForMessage({tag}u, {field.GetNamespaceTypeString()}.Parser);";
+        }
+        
         private string GetDefaultValue(MessageMember field)
         {
             if (field.IsRepeated)
-                return $"= new List<{field.Type}>()";
+                return $"= new RepeatedField<{field.GetNamespaceTypeString()}>()";
             else if (field.Type == "string")
                 return "= \"\"";
             else if (field.IsKv)
-                return $"= new {field.Type}()";
+                return $"= new {field.GetNamespaceTypeString()}()";
             return "";
         }
 
@@ -178,27 +242,35 @@ namespace GameFrameX.ProtoExport
             sb.AppendLine();
         }
 
+        // 主要优化GenerateWriteField方法:
         private void GenerateWriteField(StringBuilder sb, MessageMember field, int fieldNumber)
         {
             string fieldName = field.Name.ToCamelCase();
-            
-            if (field.Type == "string")
+            // 计算wire type
+            uint wireType = GetWireType(field.Type);
+            uint tag = (uint)(fieldNumber << 3) | wireType;
+        
+            if (IsBasicType(field.Type))
             {
-                sb.AppendLine($"\t\t\tif ({field.Name}.Length != 0)");
+                // 基本类型的处理
+                string defaultValue = GetDefaultValue(field.Type);
+                sb.AppendLine($"\t\t\tif ({fieldName}_ != {defaultValue})");
                 sb.AppendLine("\t\t\t{");
-                sb.AppendLine($"\t\t\t\toutput.WriteRawTag({fieldNumber * 8 + 2}u);");
-                sb.AppendLine($"\t\t\t\toutput.WriteString({field.Name});");
+                sb.AppendLine($"\t\t\t\toutput.WriteRawTag({tag});");
+                sb.AppendLine($"\t\t\t\toutput.Write{field.Type}({field.Name});");
                 sb.AppendLine("\t\t\t}");
             }
-            else if (field.IsRepeated)
+            else if (field.IsRepeated) 
             {
-                // Add repeated field serialization
+                // repeated类型处理
+                sb.AppendLine($"\t\t\t{fieldName}_.WriteTo(output, _repeated_{field.Name.ToCamelCase()}_codec);");
             }
             else
             {
+                // 复合类型处理
                 sb.AppendLine($"\t\t\tif ({fieldName}_ != null)");
                 sb.AppendLine("\t\t\t{");
-                sb.AppendLine($"\t\t\t\toutput.WriteRawTag({fieldNumber * 8 + 2}u);");
+                sb.AppendLine($"\t\t\t\toutput.WriteRawTag({tag});");
                 sb.AppendLine($"\t\t\t\toutput.WriteMessage({field.Name});");
                 sb.AppendLine("\t\t\t}");
             }
@@ -208,7 +280,7 @@ namespace GameFrameX.ProtoExport
         {
             sb.AppendLine("\t\tpublic override int CalculateSize()");
             sb.AppendLine("\t\t{");
-            sb.AppendLine("\t\t\tint size = 0;");
+            sb.AppendLine("\t\t\tint num = 0;");
             
             int fieldNumber = 1;
             foreach (var field in messageInfo.Fields)
@@ -219,34 +291,82 @@ namespace GameFrameX.ProtoExport
                 fieldNumber++;
             }
             
-            sb.AppendLine("\t\t\treturn size;");
+            sb.AppendLine("\t\t\treturn num;");
             sb.AppendLine("\t\t}");
             sb.AppendLine();
         }
 
-        private void GenerateCalculateFieldSize(StringBuilder sb, MessageMember field, int fieldNumber)
+        // 优化GenerateCalculateFieldSize方法:
+    private void GenerateCalculateFieldSize(StringBuilder sb, MessageMember field, int fieldNumber) 
+    {
+        string fieldName = field.Name.ToCamelCase();
+        
+        if (IsBasicType(field.Type))
         {
-            string fieldName = field.Name.ToCamelCase();
-            
-            if (field.Type == "string")
-            {
-                sb.AppendLine($"\t\t\tif ({field.Name}.Length != 0)");
-                sb.AppendLine("\t\t\t{");
-                sb.AppendLine($"\t\t\t\tsize += 1 + CodedOutputStream.ComputeStringSize({field.Name});");
-                sb.AppendLine("\t\t\t}");
-            }
-            else if (field.IsRepeated)
-            {
-                // Add repeated field size calculation
-            }
-            else
-            {
-                sb.AppendLine($"\t\t\tif ({fieldName}_ != null)");
-                sb.AppendLine("\t\t\t{");
-                sb.AppendLine($"\t\t\t\tsize += 1 + CodedOutputStream.ComputeMessageSize({field.Name});");
-                sb.AppendLine("\t\t\t}");
-            }
+            string defaultValue = GetDefaultValue(field.Type); 
+            sb.AppendLine($"\t\t\tif ({fieldName}_ != {defaultValue})");
+            sb.AppendLine("\t\t\t{"); 
+            sb.AppendLine($"\t\t\t\nnum += 1 + CodedOutputStream.Compute{field.Type}Size({field.Name});");
+            sb.AppendLine("\t\t\t}");
         }
+        else if (field.IsRepeated)
+        {
+            sb.AppendLine($"\t\t\nnum += {fieldName}_.CalculateSize(_repeated_{field.Name.ToCamelCase()}_codec);");
+        }
+        else 
+        {
+            sb.AppendLine($"\t\t\tif ({fieldName}_ != null)");
+            sb.AppendLine("\t\t\t{");
+            sb.AppendLine($"\t\t\t\nnum += 1 + CodedOutputStream.ComputeMessageSize({field.Name});"); 
+            sb.AppendLine("\t\t\t}");
+        }
+    }
+
+    // 新增帮助方法
+    private uint GetWireType(string type)
+    {
+        switch (type)
+        {
+            case "int32":
+            case "int64":
+            case "uint32":
+            case "uint64":
+            case "bool":
+            case "enum":
+                return 0; // Varint
+            case "string":
+            case "bytes":
+            case "message":
+                return 2; // Length-delimited
+            default:
+                return 2; // Default to length-delimited
+        }
+    }
+
+    private bool IsBasicType(string type)
+    {
+        return type == "int32" || type == "int64" || 
+               type == "uint32" || type == "uint64" ||
+               type == "bool" || type == "string";
+    }
+
+    private string GetDefaultValue(string type)
+    {
+        switch (type)
+        {
+            case "int32":
+            case "int64":
+            case "uint32": 
+            case "uint64":
+                return "0";
+            case "bool":
+                return "false";
+            case "string":
+                return "\"\"";
+            default:
+                return "null";
+        }
+    }
 
         private void GenerateMergeFromMethod(StringBuilder sb, MessageInfo messageInfo)
         {
