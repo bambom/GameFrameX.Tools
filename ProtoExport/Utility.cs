@@ -67,5 +67,92 @@ namespace GameFrameX.ProtoExport
 
             return typeCs;
         }
+        
+        public static bool IsBaseType(string type)
+        {
+            switch (type)
+            {
+                case "int16":
+                case "uint16":
+                case "int32":
+                case "sint32":
+                case "sfixed32":
+                case "uint32":
+                case "fixed32":
+                case "int64":
+                case "sint64":
+                case "sfixed64":
+                case "uint64":
+                case "fixed64":
+                case "bytes":
+                case "string":
+                case "bool":
+                case "double":
+                case "float":
+                    return true;
+                default:
+                    return false;
+            }
+
+        }
+        
+        
+        public static string GetBaseTypeMethodName( string type)
+        {
+            string typeCs = "";
+
+            if (MessageHelper.enum2Module.ContainsKey(type))
+            {
+                return "Enum";
+            }
+            
+            switch (type)
+            {
+                /*case "int16":
+                    typeCs = "short";
+                    break;
+                case "uint16":
+                    typeCs = "ushort";
+                    break;*/
+                case "int32":
+                case "sint32":
+                case "sfixed32":
+                    typeCs = "Int32";
+                    break;
+                case "uint32":
+                case "fixed32":
+                    typeCs = "UInt32";
+                    break;
+                case "int64":
+                case "sint64":
+                case "sfixed64":
+                    typeCs = "Int64";
+                    break;
+                case "uint64":
+                case "fixed64":
+                    typeCs = "UInt64";
+                    break;
+                /*case "bytes":
+                    typeCs = "byte[]";
+                    break;*/
+                case "string":
+                    typeCs = "String";
+                    break;
+                case "bool":
+                    typeCs = "Bool";
+                    break;
+                case "double":
+                    typeCs = "Double";
+                    break;
+                case "float":
+                    typeCs = "Float";
+                    break;
+                default:
+                    throw new Exception("未处理基础类型" + type);
+                    break;
+            }
+
+            return typeCs;
+        }
     }
 }

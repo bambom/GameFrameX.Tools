@@ -55,7 +55,7 @@ namespace GameFrameX.ProtoExport
                 {
                     continue;
                 }
-                
+                Console.WriteLine($"生成: {operationCodeInfo.ModuleName} => Module: {operationCodeInfo.Module} => {operationCodeInfo.OutputPath}");
                 switch (modeType)
                 {
                     case ModeType.Server:
@@ -71,7 +71,7 @@ namespace GameFrameX.ProtoExport
                         throw new ArgumentOutOfRangeException();
                 }
                 
-                break;
+               // break;
             }
 
 

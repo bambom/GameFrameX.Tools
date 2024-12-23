@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace GameFrameX.ProtoExport
 {
@@ -349,6 +350,16 @@ namespace GameFrameX.ProtoExport
            }
            return Type;
         }
+        
+        public string GetNamespaceTypeString(string targetType)
+        {
+            MessageHelper. type2Module.TryGetValue(targetType, out var space);
+            if (!string.IsNullOrEmpty(space))
+            {
+                return space + "." + targetType;
+            }
+            return targetType;
+        }
 
         /// <summary>
         /// 注释
@@ -380,5 +391,73 @@ namespace GameFrameX.ProtoExport
         /// 是否是kv键值对
         /// </summary>
         public bool IsKv { get; set; }
+
+        /// <summary>
+        /// 是否是枚举
+        /// </summary>
+        public bool IsEnum()
+        {
+            return MessageHelper.enum2Module.ContainsKey(Type);
+        }
+        
+        public (string, string) GetMapTypeSpace()
+        {
+            string pattern = @"map\s*<\s*(\w+)\s*,\s*(\w+)\s*>";
+        
+            Match match = Regex.Match(OriginType, pattern);
+            if (match.Success)
+            {
+                string keyType = match.Groups[1].Value;
+                string valueType = match.Groups[2].Value;
+            
+                return (GetNamespaceTypeString(keyType),GetNamespaceTypeString(valueType));
+            }
+            else
+            {
+                Console.WriteLine("No match found.");
+                throw new Exception("解析map异常");
+            }
+            
+        }
+        public (string, string) GetMapType()
+        {
+            string pattern = @"map\s*<\s*(\w+)\s*,\s*(\w+)\s*>";
+        
+            Match match = Regex.Match(OriginType, pattern);
+            if (match.Success)
+            {
+                string keyType = match.Groups[1].Value;
+                string valueType = match.Groups[2].Value;
+            
+                return (keyType,valueType);
+            }
+            else
+            {
+                Console.WriteLine("No match found.");
+                throw new Exception("解析map异常");
+            }
+            
+        }
+        public (string, string) GetMapTypeConvert()
+        {
+            string pattern = @"map\s*<\s*(\w+)\s*,\s*(\w+)\s*>";
+        
+            Match match = Regex.Match(OriginType, pattern);
+            if (match.Success)
+            {
+                string keyType = match.Groups[1].Value;
+                string valueType = match.Groups[2].Value;
+
+                keyType = Utility.ConvertType(keyType);
+                valueType = Utility.ConvertType(valueType);
+                return (GetNamespaceTypeString(keyType),GetNamespaceTypeString(valueType));
+            }
+            else
+            {
+                Console.WriteLine("No match found.");
+                throw new Exception("解析map异常");
+            }
+            
+        }
     }
 }

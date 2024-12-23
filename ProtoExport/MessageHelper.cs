@@ -59,7 +59,7 @@ public static partial class MessageHelper
         // 使用正则表达式提取消息类型
         ParseMessage(proto, messageInfo, isGenerateErrorCode);
 
-        ParseComment(proto, messageInfo.Infos);
+        ParseComment(proto, messageInfo);
 
         // 消息码排序配对
         MessageIdHandler(messageInfo.Infos, 10);
@@ -92,7 +92,7 @@ public static partial class MessageHelper
         }
     }
 
-    private static void ParseComment(string proto, List<MessageInfo> operationCodeInfos)
+    private static void ParseComment(string proto,  MessageInfoList root)
     {
         MatchCollection enumMatches = Regex.Matches(proto, CommentPattern, RegexOptions.Singleline);
         foreach (Match match in enumMatches)
@@ -101,7 +101,8 @@ public static partial class MessageHelper
             {
                 var comment = match.Groups[1].Value;
                 var type = match.Groups[3].Value;
-                foreach (var operationCodeInfo in operationCodeInfos)
+              
+                foreach (var operationCodeInfo in root.Infos)
                 {
                     if (operationCodeInfo.Name == type)
                     {
@@ -122,6 +123,7 @@ public static partial class MessageHelper
             root.Infos.Add(info);
             string blockName = match.Groups[1].Value;
             info.Name = blockName;
+            enum2Module[info.Name] = root.ModuleName;
             // Console.WriteLine("Enum Name: " + match.Groups[1].Value);
             // Console.WriteLine("Contents: " + match.Groups[2].Value);
             var blockContent = match.Groups[2].Value.Trim();
@@ -151,8 +153,9 @@ public static partial class MessageHelper
             }
         }
     }
+    
     public static Dictionary<string, string> type2Module = new Dictionary<string, string>();
-
+    public static Dictionary<string, string> enum2Module = new Dictionary<string, string>();
     private static void ParseMessage(string proto,  MessageInfoList root, bool isGenerateErrorCode = false)
     {
         MatchCollection messageMatches = Regex.Matches(proto, MessagePattern, RegexOptions.Singleline);
