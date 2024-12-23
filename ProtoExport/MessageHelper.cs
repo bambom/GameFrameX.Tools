@@ -144,6 +144,7 @@ public static partial class MessageHelper
                     if (fieldSplit.Length > 1)
                     {
                         field.Type = fieldSplit[0].Trim();
+                        field.OriginType = fieldSplit[0].Trim();
                         field.Members = int.Parse(fieldSplit[1].Replace(";", "").Trim());
                     }
                 }
@@ -197,10 +198,12 @@ public static partial class MessageHelper
                             {
                                 field.IsRepeated = true;
                                 field.Type = Utility.ConvertType(fieldSplitStrings[1].Trim());
+                                field.OriginType = fieldSplitStrings[1].Trim();
                             }
                             else
                             {
                                 field.Type = Utility.ConvertType(key + fieldSplitStrings[1].Trim());
+                                field.OriginType = key + fieldSplitStrings[1].Trim();
                                 if (key.Trim().StartsWith("map"))
                                 {
                                     field.IsKv = true;
@@ -213,6 +216,7 @@ public static partial class MessageHelper
                         else if (fieldSplitStrings.Length > 1)
                         {
                             field.Type = Utility.ConvertType(fieldSplitStrings[0].Trim());
+                            field.OriginType = fieldSplitStrings[0].Trim();
                             field.Name = fieldSplitStrings[1].Trim();
                         }
                     }
@@ -225,6 +229,7 @@ public static partial class MessageHelper
                 field.Description = "返回的错误码";
                 field.Name = "ErrorCode";
                 field.Type = Utility.ConvertType("int32");
+                field.OriginType = "int32";
                 field.Members = 888;
                 info.Fields.Add(field);
             }

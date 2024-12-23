@@ -337,7 +337,9 @@ namespace GameFrameX.ProtoExport
         /// 字段类型
         /// </summary>
         public string Type { get; set; }
-
+        //proto原始类型
+        public string OriginType { get; set; }
+        
         public string GetNamespaceTypeString()
         {
            MessageHelper. type2Module.TryGetValue(Type, out var space);

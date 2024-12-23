@@ -139,7 +139,7 @@ namespace GameFrameX.ProtoExport
                     // 属性字段
                     string fieldType = GetFieldType(field);
                     string staticDefault = GetRepatedStaticDefaultValue(field);
-                    sb.AppendLine($"\t\tprivate static readonly {fieldType} _repeated_{field.Name.ToCamelCase()}_codec {staticDefault}");
+                    sb.AppendLine($"\t\tprivate static readonly FieldCodec<{field.GetNamespaceTypeString()}> _repeated_{field.Name.ToCamelCase()}_codec {staticDefault}");
                     sb.AppendLine();
                     
                     // 属性字段
@@ -206,21 +206,29 @@ namespace GameFrameX.ProtoExport
             
             string propertyType = GetFieldType(field);
             string fieldName = field.Name.ToCamelCase();
-            
-            sb.AppendLine($"\t\tpublic {propertyType} {field.Name}");
-            sb.AppendLine("\t\t{");
-            sb.AppendLine($"\t\t\tget {{ return {fieldName}_; }}");
-            
-            if (field.Type == "string")
+
+            if (field.IsRepeated)
             {
-                sb.AppendLine($"\t\t\tset {{ {fieldName}_ = ProtoPreconditions.CheckNotNull(value, \"value\"); }}");
+                sb.AppendLine($"\t\tpublic {propertyType} {field.Name} => {fieldName}_;");
             }
             else
             {
-                sb.AppendLine($"\t\t\tset {{ {fieldName}_ = value; }}");
+                sb.AppendLine($"\t\tpublic {propertyType} {field.Name}");
+                sb.AppendLine("\t\t{");
+                sb.AppendLine($"\t\t\tget {{ return {fieldName}_; }}");
+            
+                if (field.Type == "string")
+                {
+                    sb.AppendLine($"\t\t\tset {{ {fieldName}_ = ProtoPreconditions.CheckNotNull(value, \"value\"); }}");
+                }
+                else
+                {
+                    sb.AppendLine($"\t\t\tset {{ {fieldName}_ = value; }}");
+                }
+            
+                sb.AppendLine("\t\t}");
             }
             
-            sb.AppendLine("\t\t}");
             sb.AppendLine();
         }
 
@@ -257,7 +265,7 @@ namespace GameFrameX.ProtoExport
                 sb.AppendLine($"\t\t\tif ({fieldName}_ != {defaultValue})");
                 sb.AppendLine("\t\t\t{");
                 sb.AppendLine($"\t\t\t\toutput.WriteRawTag({tag});");
-                sb.AppendLine($"\t\t\t\toutput.Write{field.Type}({field.Name});");
+                sb.AppendLine($"\t\t\t\toutput.Write{GetComputeSizeType(field.OriginType)}({field.Name});");
                 sb.AppendLine("\t\t\t}");
             }
             else if (field.IsRepeated) 
@@ -297,36 +305,52 @@ namespace GameFrameX.ProtoExport
         }
 
         // 优化GenerateCalculateFieldSize方法:
-    private void GenerateCalculateFieldSize(StringBuilder sb, MessageMember field, int fieldNumber) 
-    {
-        string fieldName = field.Name.ToCamelCase();
-        
-        if (IsBasicType(field.Type))
+        private void GenerateCalculateFieldSize(StringBuilder sb, MessageMember field, int fieldNumber) 
         {
-            string defaultValue = GetDefaultValue(field.Type); 
-            sb.AppendLine($"\t\t\tif ({fieldName}_ != {defaultValue})");
-            sb.AppendLine("\t\t\t{"); 
-            sb.AppendLine($"\t\t\t\nnum += 1 + CodedOutputStream.Compute{field.Type}Size({field.Name});");
-            sb.AppendLine("\t\t\t}");
+            string fieldName = field.Name.ToCamelCase();
+    
+            if (IsBasicType(field.OriginType))
+            {
+                string defaultValue = GetDefaultValue(field.OriginType); 
+                sb.AppendLine($"\t\t\tif ({fieldName}_ != {defaultValue})");
+                sb.AppendLine("\t\t\t{"); 
+                sb.AppendLine($"\t\t\t num += 1 + CodedOutputStream.Compute{GetComputeSizeType(field.OriginType)}Size({field.Name});");
+                sb.AppendLine("\t\t\t}");
+            }
+            else if (field.IsRepeated)
+            {
+                // 处理重复字段时，使用相应的计算方法
+                sb.AppendLine($"\t\t num += {fieldName}_.CalculateSize(_repeated_{field.Name.ToCamelCase()}_codec);");
+            }
+            else 
+            {
+                sb.AppendLine($"\t\t\tif ({fieldName}_ != null)");
+                sb.AppendLine("\t\t\t{");
+
+                // 对于消息类型，使用 ComputeMessageSize 来计算
+                if (MessageHelper.type2Module.ContainsKey(field.OriginType))
+                {
+                    sb.AppendLine($"\t\t\t num += 1 + CodedOutputStream.ComputeMessageSize({field.Name});"); 
+                }
+                else
+                {
+                    // 处理其他类型字段，选择相应的计算方法
+                    sb.AppendLine($"\t\t\t num += 1 + CodedOutputStream.Compute{GetComputeSizeType(field.OriginType)}Size({field.Name});");
+                }
+
+                sb.AppendLine("\t\t\t}");
+            }
         }
-        else if (field.IsRepeated)
-        {
-            sb.AppendLine($"\t\t\nnum += {fieldName}_.CalculateSize(_repeated_{field.Name.ToCamelCase()}_codec);");
-        }
-        else 
-        {
-            sb.AppendLine($"\t\t\tif ({fieldName}_ != null)");
-            sb.AppendLine("\t\t\t{");
-            sb.AppendLine($"\t\t\t\nnum += 1 + CodedOutputStream.ComputeMessageSize({field.Name});"); 
-            sb.AppendLine("\t\t\t}");
-        }
-    }
 
     // 新增帮助方法
     private uint GetWireType(string type)
     {
         switch (type)
         {
+            case "int":
+            case "long":
+            case "uint":
+            case "ulong":
             case "int32":
             case "int64":
             case "uint32":
@@ -342,18 +366,48 @@ namespace GameFrameX.ProtoExport
                 return 2; // Default to length-delimited
         }
     }
-
+    private string GetComputeSizeType(string type)
+    {
+        switch (type)
+        {
+            case "int32":
+                return "Int32";
+            case "int64":
+                return "Int64";
+            case "uint32":
+                return "UInt32";
+            case "uint64":
+                return "UInt64";
+            case "bool":
+                return "Bool";
+            case "enum":
+                return "Enum";
+            case "string":
+                return "String";
+            case "message":
+                return "ComputeMessageSize"; // Length-delimited
+            default:
+                return "ComputeMessageSize"; // Default to length-delimited
+        }
+    }
     private bool IsBasicType(string type)
     {
-        return type == "int32" || type == "int64" || 
+        return type == "int32" || type == "int64" ||
                type == "uint32" || type == "uint64" ||
-               type == "bool" || type == "string";
+               type == "bool" || type == "string" ||
+               type == "int" || type == "long" || type == "uint" || type == "ulong";
+
     }
 
     private string GetDefaultValue(string type)
     {
         switch (type)
         {
+            case "int":
+            case "long":
+            case "uint":
+            case "ulong":
+                
             case "int32":
             case "int64":
             case "uint32": 
@@ -398,19 +452,57 @@ namespace GameFrameX.ProtoExport
         private void GenerateMergeField(StringBuilder sb, MessageMember field, int fieldNumber)
         {
             string fieldName = field.Name.ToCamelCase();
-            uint tag = (uint)(fieldNumber << 3) | 2;
-            
+            uint wireType = GetWireType(field.OriginType);
+            uint tag = (uint)(fieldNumber << 3) | wireType;
+    
             sb.AppendLine($"\t\t\t\t\tcase {tag}u:");
-            if (field.Type == "string")
+
+            if (field.OriginType == "string")
             {
                 sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadString();");
             }
+            else if (field.OriginType == "bool")
+            {
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadBool();");
+            }
+            else if (field.OriginType == "int32" || field.OriginType == "int" )
+            {
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadInt32();");
+            }
+            else if (field.OriginType == "int64" || field.OriginType == "long")
+            {
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadInt64();");
+            }
+            else if (field.OriginType == "float")
+            {
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadFloat();");
+            }
+            else if (field.OriginType == "double")
+            {
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadDouble();");
+            }
+            else if (field.OriginType == "uint32" || field.OriginType == "uint")
+            {
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadUInt32();");
+            }
+            else if (field.OriginType == "uint64" || field.OriginType == "ulong")
+            {
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.ReadUInt64();");
+            }
             else if (field.IsRepeated)
             {
-                // Add repeated field merging
+                // Add repeated field merging (handle collections)
+                sb.AppendLine($"\t\t\t\t\t\t{field.Name.ToCamelCase()}_.AddEntriesFrom(input, _repeated_{field.Name.ToCamelCase()}_codec);");
             }
             else
             {
+                if (!MessageHelper.type2Module.ContainsKey(field.OriginType))
+                {
+                    Console.WriteLine($"Field type not handled: {field.OriginType}");
+                    sb.AppendLine($"Field type not handled: {field.OriginType}");
+                }
+                
+                // Handle nested message types
                 sb.AppendLine($"\t\t\t\t\t\tif ({fieldName}_ == null)");
                 sb.AppendLine($"\t\t\t\t\t\t\t{fieldName}_ = new {field.Type}();");
                 sb.AppendLine($"\t\t\t\t\t\tinput.ReadMessage({fieldName}_);");
