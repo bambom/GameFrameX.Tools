@@ -316,13 +316,13 @@ namespace GameFrameX.ProtoExport
            
             sb.AppendLine("\t\t{");
 
-            int fieldNumber = 1;
+            //int fieldNumber = 1;
             foreach (var field in messageInfo.Fields)
             {
                 if (!field.IsValid) continue;
 
-                GenerateWriteField(sb, field, fieldNumber);
-                fieldNumber++;
+                GenerateWriteField(sb, field, field.Members);
+                //fieldNumber++;
             }
 
             sb.AppendLine("\t\t}");
@@ -438,13 +438,13 @@ namespace GameFrameX.ProtoExport
             sb.AppendLine("\t\t{");
             sb.AppendLine("\t\t\tint num = 0;");
 
-            int fieldNumber = 1;
+          //  int fieldNumber = 1;
             foreach (var field in messageInfo.Fields)
             {
                 if (!field.IsValid) continue;
 
-                GenerateCalculateFieldSize(sb, field, fieldNumber);
-                fieldNumber++;
+                GenerateCalculateFieldSize(sb, field, field.Members);
+             //   fieldNumber++;
             }
 
             sb.AppendLine("\t\t\treturn num;");
@@ -628,13 +628,13 @@ namespace GameFrameX.ProtoExport
             sb.AppendLine("\t\t\t\t\t\tinput.SkipLastField();");
             sb.AppendLine("\t\t\t\t\t\tbreak;");
 
-            int fieldNumber = 1;
+           // int fieldNumber = 1;
             foreach (var field in messageInfo.Fields)
             {
                 if (!field.IsValid) continue;
 
-                GenerateMergeField(sb, field, fieldNumber);
-                fieldNumber++;
+                GenerateMergeField(sb, field, field.Members);
+               // fieldNumber++;
             }
 
             sb.AppendLine("\t\t\t\t}");

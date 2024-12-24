@@ -377,7 +377,8 @@ namespace GameFrameX.ProtoExport
                 _members = value;
                 if (value >= 800 && Name != "ErrorCode")
                 {
-                    throw new Exception("成员编码不能大于800");
+                    //throw new Exception("成员编码不能大于800");
+                    _members = 600;
                 }
             }
         }
