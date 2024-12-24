@@ -199,7 +199,7 @@ namespace GameFrameX.ProtoExport
 
         private string GetRepatedStaticDefaultValue(MessageMember field)
         {
-            uint wireType = GetWireType(field.Type,field.IsRepeated);
+            uint wireType = GetWireType(field.Type,field);
             uint tag = (uint)(field.Members << 3) | wireType;
             if (Utility.IsBaseType(field.OriginType))
             {
@@ -215,15 +215,15 @@ namespace GameFrameX.ProtoExport
         private string GetMapStaticDefaultValue(MessageMember field)
         {
             //map类型de tag
-            uint wireType = GetWireType(field.Type,field.IsRepeated);
+            uint wireType = GetWireType(field.Type,field);
             uint maptag = (uint)(field.Members << 3) | wireType;
             
             var mapType = field.GetMapType();
             var mapTypeSpace = field.GetMapTypeSpace();
             
             //key value 的tag
-            uint keytag = (uint)(1 << 3) | GetWireType(mapType.Item1,false);
-            uint valuetag = (uint)(2 << 3) | GetWireType(mapType.Item2,false);;
+            uint keytag = (uint)(1 << 3) | GetWireType(mapType.Item1,false,false);
+            uint valuetag = (uint)(2 << 3) | GetWireType(mapType.Item2,false,false);;
 
             string keyCode = "";
             //key 1
@@ -367,7 +367,7 @@ namespace GameFrameX.ProtoExport
         {
             string fieldName = field.Name.ToCamelCase();
             // 计算wire type
-            uint wireType = GetWireType(field.Type,field.IsRepeated);
+            uint wireType = GetWireType(field.Type,field);
             uint tag = (uint)(fieldNumber << 3) | wireType;
            
             
@@ -535,8 +535,17 @@ namespace GameFrameX.ProtoExport
             packed 格式使用 wireType = 2（因为是 length-delimited 编码的字节数组）。
         * 
         */
-       private uint GetWireType(string type, bool isRepeated)
+       private uint GetWireType(string type, MessageMember field)
        {
+           return GetWireType(type, field.IsRepeated, field.IsEnum());
+       }
+
+       private uint GetWireType(string type, bool isRepeated,bool isEnum)
+       {
+           if (isEnum)
+           {
+               return 0;
+           }
            // 如果是 repeated 类型，优先使用 packed 格式（Length-delimited）
            if (isRepeated)
            {
@@ -645,7 +654,7 @@ namespace GameFrameX.ProtoExport
         private void GenerateMergeField(StringBuilder sb, MessageMember field, int fieldNumber)
         {
             string fieldName = field.Name.ToCamelCase();
-            uint wireType = GetWireType(field.OriginType,field.IsRepeated);
+            uint wireType = GetWireType(field.OriginType,field);
             uint tag = (uint)(fieldNumber << 3) | wireType;
 
             //如果是基础类型int之类 需要支持package和非pacjage
