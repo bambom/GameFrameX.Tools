@@ -478,7 +478,7 @@ namespace GameFrameX.ProtoExport
            else if (!field.IsRepeated && Utility.IsBaseType(field.OriginType) )
             {
                 string defaultValue = GetDefaultValue(field.OriginType);
-                sb.AppendLine($"\t\t\tif ({fieldName}_ != {defaultValue})");
+                sb.AppendLine($"\t\t\tif ({field.Name} != {defaultValue})");
                 sb.AppendLine("\t\t\t{");
                 sb.AppendLine(
                     $"\t\t\t\tnum += {tagSize} + CodedOutputStream.Compute{Utility.GetBaseTypeMethodName(field.OriginType)}Size({field.Name});");
