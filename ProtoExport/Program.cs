@@ -51,15 +51,15 @@ namespace GameFrameX.ProtoExport
             //生成脚本
             foreach (var operationCodeInfo in messageInfoLists)
             {
-                if (!operationCodeInfo.ModuleName.Contains("Proto."))
+                /*if (!operationCodeInfo.ModuleName.Contains("Proto."))
                 {
                     continue;
-                }
+                }*/
                 Console.WriteLine($"生成: {operationCodeInfo.ModuleName} => Module: {operationCodeInfo.Module} => {operationCodeInfo.OutputPath}");
                 switch (modeType)
                 {
                     case ModeType.Server:
-                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, launcherOptions.NamespaceName);
+                        ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, operationCodeInfo.ModuleName);
                         break;
                     case ModeType.Unity:
                         ProtoGenerateHelper?.Run(operationCodeInfo, launcherOptions.OutputPath, operationCodeInfo.ModuleName);

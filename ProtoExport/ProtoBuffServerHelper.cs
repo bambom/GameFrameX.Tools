@@ -17,7 +17,7 @@ namespace GameFrameX.ProtoExport
             sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using GameFrameX.NetWork.Abstractions;");
             sb.AppendLine("using GameFrameX.NetWork.Messages;");
-           // messageInfoList.AppendUsings(sb);
+            messageInfoList.AppendServerUsings(sb);
 
             sb.AppendLine();
             sb.AppendLine($"namespace {namespaceName}");
@@ -73,18 +73,18 @@ namespace GameFrameX.ProtoExport
                         sb.AppendLine($"\t\t[ProtoMember({operationField.Members})]");
                         if (operationField.IsRepeated)
                         {
-                            sb.AppendLine($"\t\tpublic List<{operationField.Type}> {operationField.Name} = new List<{operationField.Type}>();");
+                            sb.AppendLine($"\t\tpublic List<{operationField.GetNamespaceTypeString()}> {operationField.Name} = new List<{operationField.GetNamespaceTypeString()}>();");
                         }
                         else
                         {
                             string defaultValue = string.Empty;
                             if (operationField.IsKv)
                             {
-                                defaultValue = $" = new {operationField.Type}();";
+                                defaultValue = $" = new {operationField.GetNamespaceTypeString()}();";
                                 sb.AppendLine($"\t\t[ProtoMap(DisableMap = true)]");
                             }
 
-                            sb.AppendLine($"\t\tpublic {operationField.Type} {operationField.Name} {{ get; set; }}{defaultValue}");
+                            sb.AppendLine($"\t\tpublic {operationField.GetNamespaceTypeString()} {operationField.Name} {{ get; set; }}{defaultValue}");
                         }
 
                         sb.AppendLine();

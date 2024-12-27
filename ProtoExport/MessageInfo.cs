@@ -50,7 +50,7 @@ namespace GameFrameX.ProtoExport
         /// </summary>
         public void AddReferencedModule(string moduleName)
         {
-            if (string.IsNullOrEmpty(moduleName) || moduleName == ModuleName)
+            if (string.IsNullOrEmpty(moduleName) || moduleName == ModuleName || ReferencedModules.Contains(moduleName))
             {
                 return;
             }
@@ -95,6 +95,27 @@ namespace GameFrameX.ProtoExport
             foreach (var referencedModule in ReferencedModules.OrderBy(x => x))
             {
                 if (referencedModule != "System")
+                {
+                    sb.AppendLine($"using {referencedModule};");
+                }
+            }
+
+            // 添加空行分隔
+            sb.AppendLine();
+        }
+        
+        
+        public void AppendServerUsings(StringBuilder sb)
+        {
+            // 确保在添加using之前已经分析了所有引用
+            AnalyzeAndAddReferences();
+
+            // 添加其他模块的using，排除System因为已经单独处理
+            foreach (var referencedModule in ReferencedModules.OrderBy(x => x))
+            {
+                if (referencedModule != "System" && 
+                    referencedModule != "GameFrameX.Network.Runtime" 
+                    )
                 {
                     sb.AppendLine($"using {referencedModule};");
                 }

@@ -13,7 +13,7 @@ public static partial class MessageHelper
     private const string StartPattern = @"option start = (\d+);";
     private const string ModulePattern = @"option module = (-?\d+);";
     private const string PackagePattern = @"package ([\w\.]+);";
-
+    private const string ImportPattern = @"import ([\w\.]+).proto;";
 
     public static MessageInfoList Parse(string proto, string fileName, string filePath, bool isGenerateErrorCode)
     {
@@ -55,7 +55,7 @@ public static partial class MessageHelper
         Console.WriteLine($"Package: {packageMatch.Groups[1].Value} => Module: {moduleMatch.Groups[1].Value}");
         // 使用正则表达式提取枚举类型
         ParseEnum(proto, messageInfo);
-
+        ParseImport(proto,messageInfo);
         // 使用正则表达式提取消息类型
         ParseMessage(proto, messageInfo, isGenerateErrorCode);
 
@@ -113,7 +113,16 @@ public static partial class MessageHelper
             }
         }
     }
-
+    
+    private static void ParseImport(string proto,  MessageInfoList root)
+    {
+        MatchCollection messageMatches = Regex.Matches(proto, ImportPattern, RegexOptions.Singleline);
+        foreach (Match match in messageMatches)
+        {
+            string nameSpace = match.Groups[1].Value;
+            root.AddReferencedModule(nameSpace);
+        }
+    }
     private static void ParseEnum(string proto, MessageInfoList root)
     {
         MatchCollection enumMatches = Regex.Matches(proto, EnumPattern, RegexOptions.Singleline);
