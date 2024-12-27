@@ -658,7 +658,7 @@ namespace GameFrameX.ProtoExport
             uint tag = (uint)(fieldNumber << 3) | wireType;
 
             //如果是基础类型int之类 需要支持package和非pacjage
-            if (field.IsRepeated && Utility.IsBaseType(field.OriginType))
+            if (field.IsRepeated && !Utility.IsString(field.OriginType) &&  Utility.IsBaseType(field.OriginType))
             {
                 uint packagetag = (uint)(fieldNumber << 3) | 2;
                 uint unpackagetag = (uint)(fieldNumber << 3) | 0;

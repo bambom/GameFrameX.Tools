@@ -67,7 +67,19 @@ namespace GameFrameX.ProtoExport
 
             return typeCs;
         }
-        
+
+        public static bool IsString(string type)
+        {
+            switch (type)
+            {
+                case "string":
+                case "String":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         public static bool IsBaseType(string type)
         {
             switch (type)
