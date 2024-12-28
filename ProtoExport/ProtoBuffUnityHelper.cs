@@ -87,6 +87,7 @@ namespace GameFrameX.ProtoExport
                             sb.AppendLine($"\t\tpublic {operationField.Type} {operationField.Name} {{ get; set; }}{defaultValue}");
                         }
 
+                        
                         sb.AppendLine();
                     }
 

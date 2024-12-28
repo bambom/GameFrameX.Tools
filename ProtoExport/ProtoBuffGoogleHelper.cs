@@ -69,7 +69,7 @@ namespace GameFrameX.ProtoExport
                 sb.Append("}");
                 sb.AppendLine();
 
-                var folder = operationCodeInfo.Root.OutputPath.Replace("Proto.","");
+                var folder = operationCodeInfo.Root.OutputPath.Replace("Proto.", "");
                 if (!Directory.Exists(folder))
                 {
                     Directory.CreateDirectory(folder);
@@ -117,7 +117,7 @@ namespace GameFrameX.ProtoExport
             string inheritance = isMsg
                 ? $" : MessageObject, {messageInfo.ParentClass}"
                 : " : Google.Protobuf.IMessage";
-                
+
 
             sb.AppendLine($"\tpublic sealed class {messageInfo.Name}{inheritance}");
             sb.AppendLine("\t{");
@@ -152,7 +152,7 @@ namespace GameFrameX.ProtoExport
                     sb.AppendLine($"\t\tprivate readonly {fieldType} {field.Name.ToCamelCase()}_ {defaultValue};");
                     sb.AppendLine();
                 }
-                else if(field.IsKv)
+                else if (field.IsKv)
                 {
                     var mapType = field.GetMapTypeConvert();
                     string staticDefault = GetMapStaticDefaultValue(field);
@@ -160,9 +160,10 @@ namespace GameFrameX.ProtoExport
                         $"\t\tprivate static readonly MapField<{mapType.Item1},{mapType.Item2}>.Codec _map_{field.Name.ToCamelCase()}_codec {staticDefault}");
 
                     sb.AppendLine();
-                    
-                    sb.AppendLine($"\t\tprivate readonly MapField<{mapType.Item1},{mapType.Item2}> {field.Name.ToCamelCase()}_ =" +
-                                  $" new MapField<{mapType.Item1},{mapType.Item2}>();");
+
+                    sb.AppendLine(
+                        $"\t\tprivate readonly MapField<{mapType.Item1},{mapType.Item2}> {field.Name.ToCamelCase()}_ =" +
+                        $" new MapField<{mapType.Item1},{mapType.Item2}>();");
                     sb.AppendLine();
                 }
                 else
@@ -182,9 +183,9 @@ namespace GameFrameX.ProtoExport
             }
 
             // Serialization methods
-            GenerateWriteToMethod(sb, messageInfo,isMsg);
-            GenerateCalculateSizeMethod(sb, messageInfo,isMsg);
-            GenerateMergeFromMethod(sb, messageInfo,isMsg);
+            GenerateWriteToMethod(sb, messageInfo, isMsg);
+            GenerateCalculateSizeMethod(sb, messageInfo, isMsg);
+            GenerateMergeFromMethod(sb, messageInfo, isMsg);
 
             sb.AppendLine("\t}");
             sb.AppendLine();
@@ -199,7 +200,7 @@ namespace GameFrameX.ProtoExport
 
         private string GetRepatedStaticDefaultValue(MessageMember field)
         {
-            uint wireType = GetWireType(field.Type,field);
+            uint wireType = GetWireType(field.Type, field);
             uint tag = (uint)(field.Members << 3) | wireType;
             if (Utility.IsBaseType(field.OriginType))
             {
@@ -209,46 +210,46 @@ namespace GameFrameX.ProtoExport
             {
                 return $"= FieldCodec.ForMessage({tag}u, {field.GetNamespaceTypeString()}.Parser);";
             }
-           
         }
-        
+
         private string GetMapStaticDefaultValue(MessageMember field)
         {
             //map类型de tag
-            uint wireType = GetWireType(field.Type,field);
+            uint wireType = GetWireType(field.Type, field);
             uint maptag = (uint)(field.Members << 3) | wireType;
-            
+
             var mapType = field.GetMapType();
             var mapTypeSpace = field.GetMapTypeSpace();
-            
+
             //key value 的tag
-            uint keytag = (uint)(1 << 3) | GetWireType(mapType.Item1,false,false);
-            uint valuetag = (uint)(2 << 3) | GetWireType(mapType.Item2,false,false);;
+            uint keytag = (uint)(1 << 3) | GetWireType(mapType.Item1, false, false);
+            uint valuetag = (uint)(2 << 3) | GetWireType(mapType.Item2, false, false);
+            ;
 
             string keyCode = "";
             //key 1
             if (Utility.IsBaseType(mapType.Item1))
             {
-                keyCode =  $"FieldCodec.For{Utility.GetBaseTypeMethodName(mapTypeSpace.Item1)}({keytag}u)";
+                keyCode = $"FieldCodec.For{Utility.GetBaseTypeMethodName(mapTypeSpace.Item1)}({keytag}u)";
             }
             else
             {
-                keyCode =  $"FieldCodec.ForMessage({keytag}u,{mapTypeSpace.Item1}.Parser)";
+                keyCode = $"FieldCodec.ForMessage({keytag}u,{mapTypeSpace.Item1}.Parser)";
             }
-            
+
             string ValueCode = "";
             //value
             if (Utility.IsBaseType(mapType.Item2))
             {
-                ValueCode =  $"FieldCodec.For{Utility.GetBaseTypeMethodName(mapTypeSpace.Item2)}({valuetag}u)";
+                ValueCode = $"FieldCodec.For{Utility.GetBaseTypeMethodName(mapTypeSpace.Item2)}({valuetag}u)";
             }
             else
             {
-                ValueCode =  $"FieldCodec.ForMessage({valuetag}u,{mapTypeSpace.Item2}.Parser)";
+                ValueCode = $"FieldCodec.ForMessage({valuetag}u,{mapTypeSpace.Item2}.Parser)";
             }
 
             var mapTypeSpaceConvert = field.GetMapTypeConvert();
-            
+
             return
                 $"= new MapField<{mapTypeSpaceConvert.Item1}, {mapTypeSpaceConvert.Item2}>.Codec({keyCode},{ValueCode}, {maptag}u);";
         }
@@ -303,7 +304,7 @@ namespace GameFrameX.ProtoExport
             sb.AppendLine();
         }
 
-        private void GenerateWriteToMethod(StringBuilder sb, MessageInfo messageInfo,bool isInheritance)
+        private void GenerateWriteToMethod(StringBuilder sb, MessageInfo messageInfo, bool isInheritance)
         {
             if (isInheritance)
             {
@@ -313,7 +314,7 @@ namespace GameFrameX.ProtoExport
             {
                 sb.AppendLine("\t\tpublic void WriteTo(CodedOutputStream output)");
             }
-           
+
             sb.AppendLine("\t\t{");
 
             //int fieldNumber = 1;
@@ -336,10 +337,11 @@ namespace GameFrameX.ProtoExport
             List<byte> bytes = new List<byte>();
             while (tag >= 128)
             {
-                bytes.Add((byte)(tag | 0x80));  // 将最高位设为1，表示后面还有字节
-                tag >>= 7;  // 将 tag 右移 7 位
+                bytes.Add((byte)(tag | 0x80)); // 将最高位设为1，表示后面还有字节
+                tag >>= 7; // 将 tag 右移 7 位
             }
-            bytes.Add((byte)tag);  // 最后一个字节不需要设置最高位
+
+            bytes.Add((byte)tag); // 最后一个字节不需要设置最高位
 
             // 根据拆分的字节数，调用不同重载的 WriteRawTag 方法
             switch (bytes.Count)
@@ -357,32 +359,33 @@ namespace GameFrameX.ProtoExport
                     sb.AppendLine($"\t\t\t\toutput.WriteRawTag({bytes[0]}, {bytes[1]}, {bytes[2]}, {bytes[3]});");
                     break;
                 case 5:
-                    sb.AppendLine($"\t\t\t\toutput.WriteRawTag({bytes[0]}, {bytes[1]}, {bytes[2]}, {bytes[3]}, {bytes[4]});");
+                    sb.AppendLine(
+                        $"\t\t\t\toutput.WriteRawTag({bytes[0]}, {bytes[1]}, {bytes[2]}, {bytes[3]}, {bytes[4]});");
                     break;
                 default:
                     throw new InvalidOperationException("Too many bytes for tag.");
             }
         }
+
         private void GenerateWriteField(StringBuilder sb, MessageMember field, int fieldNumber)
         {
             string fieldName = field.Name.ToCamelCase();
             // 计算wire type
-            uint wireType = GetWireType(field.Type,field);
+            uint wireType = GetWireType(field.Type, field);
             uint tag = (uint)(fieldNumber << 3) | wireType;
-           
-            
-            
+
+
             if (!field.IsRepeated && field.OriginType.Equals("string"))
             {
                 string defaultValue = GetDefaultValue(field.Type);
                 sb.AppendLine($"\t\t\tif ({field.Name}.Length != {defaultValue})");
                 sb.AppendLine("\t\t\t{");
-               // sb.AppendLine($"\t\t\t\toutput.WriteRawTag({tag});");
+                // sb.AppendLine($"\t\t\t\toutput.WriteRawTag({tag});");
                 WriteTag(tag, sb);
                 sb.AppendLine($"\t\t\t\toutput.Write{Utility.GetBaseTypeMethodName(field.OriginType)}({field.Name});");
                 sb.AppendLine("\t\t\t}");
             }
-            else if (!field.IsRepeated &&  Utility.IsBaseType(field.OriginType))
+            else if (!field.IsRepeated && Utility.IsBaseType(field.OriginType))
             {
                 // 基本类型的处理
                 string defaultValue = GetDefaultValue(field.Type);
@@ -407,7 +410,7 @@ namespace GameFrameX.ProtoExport
             {
                 sb.AppendLine($"\t\t\tif ({field.Name} != 0)");
                 sb.AppendLine("\t\t\t{");
-               // sb.AppendLine($"\t\t\t\toutput.WriteRawTag({tag});");
+                // sb.AppendLine($"\t\t\t\toutput.WriteRawTag({tag});");
                 WriteTag(tag, sb);
                 sb.AppendLine($"\t\t\t\toutput.WriteEnum((int){field.Name});");
                 sb.AppendLine("\t\t\t}");
@@ -424,27 +427,27 @@ namespace GameFrameX.ProtoExport
             }
         }
 
-        private void GenerateCalculateSizeMethod(StringBuilder sb, MessageInfo messageInfo,bool isInheritance)
+        private void GenerateCalculateSizeMethod(StringBuilder sb, MessageInfo messageInfo, bool isInheritance)
         {
             if (isInheritance)
             {
-                sb.AppendLine("\t\tpublic override int CalculateSize()"); 
+                sb.AppendLine("\t\tpublic override int CalculateSize()");
             }
             else
             {
                 sb.AppendLine("\t\tpublic int CalculateSize()");
             }
-            
+
             sb.AppendLine("\t\t{");
             sb.AppendLine("\t\t\tint num = 0;");
 
-          //  int fieldNumber = 1;
+            //  int fieldNumber = 1;
             foreach (var field in messageInfo.Fields)
             {
                 if (!field.IsValid) continue;
 
                 GenerateCalculateFieldSize(sb, field, field.Members);
-             //   fieldNumber++;
+                //   fieldNumber++;
             }
 
             sb.AppendLine("\t\t\treturn num;");
@@ -455,18 +458,18 @@ namespace GameFrameX.ProtoExport
         // 优化
         private void GenerateCalculateFieldSize(StringBuilder sb, MessageMember field, int fieldNumber)
         {
-           int GetTagSize(int num)
+            int GetTagSize(int num)
             {
-                if (num <= 15) return 1;      // 1-15 范围使用 1 字节
-                if (num <= 2047) return 2;    // 16-2047 范围使用 2 字节
-                if (num <= 262143) return 3;  // 2048-262143 范围使用 3 字节
+                if (num <= 15) return 1; // 1-15 范围使用 1 字节
+                if (num <= 2047) return 2; // 16-2047 范围使用 2 字节
+                if (num <= 262143) return 3; // 2048-262143 范围使用 3 字节
                 return 4;
             }
 
             int tagSize = GetTagSize(fieldNumber);
             string fieldName = field.Name.ToCamelCase();
 
-            if (!field.IsRepeated && field.OriginType.Equals("string") )
+            if (!field.IsRepeated && field.OriginType.Equals("string"))
             {
                 string defaultValue = GetDefaultValue(field.OriginType);
                 sb.AppendLine($"\t\t\tif ({field.Name}.Length != 0)");
@@ -475,7 +478,7 @@ namespace GameFrameX.ProtoExport
                     $"\t\t\t\tnum += {tagSize} + CodedOutputStream.ComputeStringSize({field.Name});");
                 sb.AppendLine("\t\t\t}");
             }
-           else if (!field.IsRepeated && Utility.IsBaseType(field.OriginType) )
+            else if (!field.IsRepeated && Utility.IsBaseType(field.OriginType))
             {
                 string defaultValue = GetDefaultValue(field.OriginType);
                 sb.AppendLine($"\t\t\tif ({field.Name} != {defaultValue})");
@@ -522,76 +525,77 @@ namespace GameFrameX.ProtoExport
                 sb.AppendLine("\t\t\t}");
             }
         }
-      
-       /*
-        wireType
-            Protobuf 的序列化类型信息，用来表示数据的编码方式。每种类型都有对应的 wire type：
-            0 (Varint)：用于整型（如 int32、int64、bool）。
-            1 (Fixed64)：用于 fixed64、double。
-            2 (Length-delimited)：用于字符串、消息、字节数组，以及 packed 的 repeated 类型。
-            5 (Fixed32)：用于 fixed32、float。
-            对于 repeated int32 GetRewardIds：
-            非 packed 格式使用 wireType = 0（因为是 int32 类型的 Varint 编码）。
-            packed 格式使用 wireType = 2（因为是 length-delimited 编码的字节数组）。
-        * 
-        */
-       private uint GetWireType(string type, MessageMember field)
-       {
-           return GetWireType(type, field.IsRepeated, field.IsEnum());
-       }
 
-       private uint GetWireType(string type, bool isRepeated,bool isEnum)
-       {
-           if (isEnum)
-           {
-               return 0;
-           }
-           // 如果是 repeated 类型，优先使用 packed 格式（Length-delimited）
-           if (isRepeated)
-           {
-               return 2; // Packed repeated fields use Length-delimited
-           }
+        /*
+         wireType
+             Protobuf 的序列化类型信息，用来表示数据的编码方式。每种类型都有对应的 wire type：
+             0 (Varint)：用于整型（如 int32、int64、bool）。
+             1 (Fixed64)：用于 fixed64、double。
+             2 (Length-delimited)：用于字符串、消息、字节数组，以及 packed 的 repeated 类型。
+             5 (Fixed32)：用于 fixed32、float。
+             对于 repeated int32 GetRewardIds：
+             非 packed 格式使用 wireType = 0（因为是 int32 类型的 Varint 编码）。
+             packed 格式使用 wireType = 2（因为是 length-delimited 编码的字节数组）。
+         *
+         */
+        private uint GetWireType(string type, MessageMember field)
+        {
+            return GetWireType(type, field.IsRepeated, field.IsEnum());
+        }
 
-           if (type.StartsWith("map<"))
-           {
-               return 2; // Packed repeated fields use Length-delimited
-           }
-           
-           // 非 repeated 类型按类型处理
-           switch (type)
-           {
-               case "int":
-               case "int32":
-               case "int64":
-               case "uint":
-               case "uint32":
-               case "uint64":
-               case "long":
-               case "ulong":
-               case "bool":
-               case "enum":
-                   return 0; // Varint
+        private uint GetWireType(string type, bool isRepeated, bool isEnum)
+        {
+            if (isEnum)
+            {
+                return 0;
+            }
 
-               case "fixed32":
-               case "sfixed32":
-               case "float":
-                   return 5; // Fixed32
+            // 如果是 repeated 类型，优先使用 packed 格式（Length-delimited）
+            if (isRepeated)
+            {
+                return 2; // Packed repeated fields use Length-delimited
+            }
 
-               case "fixed64":
-               case "sfixed64":
-               case "double":
-                   return 1; // Fixed64
+            if (type.StartsWith("map<"))
+            {
+                return 2; // Packed repeated fields use Length-delimited
+            }
 
-               case "string":
-               case "bytes":
-               case "message":
-                   return 2; // Length-delimited
+            // 非 repeated 类型按类型处理
+            switch (type)
+            {
+                case "int":
+                case "int32":
+                case "int64":
+                case "uint":
+                case "uint32":
+                case "uint64":
+                case "long":
+                case "ulong":
+                case "bool":
+                case "enum":
+                    return 0; // Varint
 
-               default:
-                   return 2;
-                   //throw new ArgumentException($"Unknown type: {type}");
-           }
-       }
+                case "fixed32":
+                case "sfixed32":
+                case "float":
+                    return 5; // Fixed32
+
+                case "fixed64":
+                case "sfixed64":
+                case "double":
+                    return 1; // Fixed64
+
+                case "string":
+                case "bytes":
+                case "message":
+                    return 2; // Length-delimited
+
+                default:
+                    return 2;
+                //throw new ArgumentException($"Unknown type: {type}");
+            }
+        }
 
         private string GetDefaultValue(string type)
         {
@@ -616,7 +620,7 @@ namespace GameFrameX.ProtoExport
             }
         }
 
-        private void GenerateMergeFromMethod(StringBuilder sb, MessageInfo messageInfo,bool isInheritance)
+        private void GenerateMergeFromMethod(StringBuilder sb, MessageInfo messageInfo, bool isInheritance)
         {
             if (isInheritance)
             {
@@ -626,7 +630,7 @@ namespace GameFrameX.ProtoExport
             {
                 sb.AppendLine("\t\tpublic void MergeFrom(CodedInputStream input)");
             }
-           
+
             sb.AppendLine("\t\t{");
             sb.AppendLine("\t\t\tuint tag;");
             sb.AppendLine("\t\t\twhile ((tag = input.ReadTag()) != 0)");
@@ -637,13 +641,13 @@ namespace GameFrameX.ProtoExport
             sb.AppendLine("\t\t\t\t\t\tinput.SkipLastField();");
             sb.AppendLine("\t\t\t\t\t\tbreak;");
 
-           // int fieldNumber = 1;
+            // int fieldNumber = 1;
             foreach (var field in messageInfo.Fields)
             {
                 if (!field.IsValid) continue;
 
                 GenerateMergeField(sb, field, field.Members);
-               // fieldNumber++;
+                // fieldNumber++;
             }
 
             sb.AppendLine("\t\t\t\t}");
@@ -654,11 +658,11 @@ namespace GameFrameX.ProtoExport
         private void GenerateMergeField(StringBuilder sb, MessageMember field, int fieldNumber)
         {
             string fieldName = field.Name.ToCamelCase();
-            uint wireType = GetWireType(field.OriginType,field);
+            uint wireType = GetWireType(field.OriginType, field);
             uint tag = (uint)(fieldNumber << 3) | wireType;
 
             //如果是基础类型int之类 需要支持package和非pacjage
-            if (field.IsRepeated && !Utility.IsString(field.OriginType) &&  Utility.IsBaseType(field.OriginType))
+            if (field.IsRepeated && !Utility.IsString(field.OriginType) && Utility.IsBaseType(field.OriginType))
             {
                 uint packagetag = (uint)(fieldNumber << 3) | 2;
                 uint unpackagetag = (uint)(fieldNumber << 3) | 0;
@@ -669,11 +673,12 @@ namespace GameFrameX.ProtoExport
             {
                 sb.AppendLine($"\t\t\t\t\tcase {tag}u:");
             }
-           
-            
+
+
             if (!field.IsRepeated && Utility.IsBaseType(field.OriginType))
             {
-                sb.AppendLine($"\t\t\t\t\t\t{field.Name} = input.Read{Utility.GetBaseTypeMethodName(field.OriginType)}();");
+                sb.AppendLine(
+                    $"\t\t\t\t\t\t{field.Name} = input.Read{Utility.GetBaseTypeMethodName(field.OriginType)}();");
             }
             else if (field.IsRepeated)
             {
@@ -686,7 +691,7 @@ namespace GameFrameX.ProtoExport
                 sb.AppendLine(
                     $"\t\t\t\t\t\t{field.Name.ToCamelCase()}_.AddEntriesFrom(input, _map_{field.Name.ToCamelCase()}_codec);");
             }
-            else if(field.IsEnum())
+            else if (field.IsEnum())
             {
                 sb.AppendLine($"\t\t\t\t\t\t{field.Name} = ({field.Type})input.ReadEnum();");
             }
@@ -708,9 +713,112 @@ namespace GameFrameX.ProtoExport
 
             sb.AppendLine("\t\t\t\t\t\tbreak;");
         }
-
+ 
         public void Post(List<MessageInfoList> operationCodeInfo, string launcherOptionsOutputPath)
         {
+            var sb = new StringBuilder();
+
+            int GetCode(MessageInfo msg)
+            {
+               return (msg.Root.Module << 16) + msg.Opcode;
+            }
+            
+            List<string> nameSpace = new List<string>();
+            foreach (var info in operationCodeInfo)
+            {
+                //不重复添加到namespace
+                if (!nameSpace.Contains(info.ModuleName))
+                {
+                    nameSpace.Add(info.ModuleName);
+                }
+            }
+            //添加命名空间
+            sb.AppendLine($"using Framework.Google;");
+            sb.AppendLine($"using Google.Protobuf;");
+            sb.AppendLine($"using System.Collections.Generic;");
+            foreach (var usingStr in nameSpace)
+            {
+                sb.AppendLine($"using {usingStr};");
+            }
+            
+            
+            // Generate class header
+            sb.AppendLine("public class CustomPackageFactory : IPackageFunction");
+            sb.AppendLine("{");
+
+            // Generate cache dictionary
+            sb.AppendLine(
+                "    private static Dictionary<ushort, IMessage> packageCacheDic = new Dictionary<ushort, IMessage>();");
+            sb.AppendLine();
+
+            // Generate GetMessageId method
+            sb.AppendLine("    public int GetMessageId(IMessage message)");
+            sb.AppendLine("    {");
+            foreach (var info in operationCodeInfo)
+            {
+                foreach (var msg in info.Infos)
+                {
+                    if(msg.IsRequest || msg.IsResponse)
+                    {
+                        sb.AppendLine($"        if (message is {msg.Name})");
+                        sb.AppendLine($"        {{");
+                        sb.AppendLine($"            return {GetCode(msg)};");
+                        sb.AppendLine($"        }}");
+                    }
+                   
+                }
+               
+            }
+
+            sb.AppendLine("        return 0;");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+
+            // Generate GetMessage method
+            sb.AppendLine("    public IMessage GetMessage(int messageId)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        return messageId switch");
+            sb.AppendLine("        {");
+            foreach (var info in operationCodeInfo)
+            {
+                foreach (var msg in info.Infos)
+                {
+                    if (msg.IsRequest || msg.IsResponse)
+                    {
+                        sb.AppendLine($"            {GetCode(msg)} => new {msg.Name}(),");
+                    }
+                        
+                }
+               
+            }
+
+            sb.AppendLine("            _ => null,");
+            sb.AppendLine("        };");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+
+            // Generate GetCacheMessage method
+            sb.AppendLine("    public IMessage GetCacheMessage(ushort id)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        if (packageCacheDic.ContainsKey(id))");
+            sb.AppendLine("        {");
+            sb.AppendLine("            return packageCacheDic[id];");
+            sb.AppendLine("        }");
+            sb.AppendLine("        IMessage message = GetMessage(id);");
+            sb.AppendLine("        if (message == null)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            return null;");
+            sb.AppendLine("        }");
+            sb.AppendLine("        packageCacheDic.Add(id, message);");
+            sb.AppendLine("        return message;");
+            sb.AppendLine("    }");
+
+            // Close class
+            sb.AppendLine("}");
+
+            // Write to file
+            var filePath = Path.Combine(launcherOptionsOutputPath, "../NetWork/CustomPackageFactory.cs");
+            File.WriteAllText(filePath, sb.ToString());
         }
     }
 
